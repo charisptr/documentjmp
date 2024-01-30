@@ -34,7 +34,7 @@ class PaluUtamaController extends Controller
       $folders = Folder::orderBy("name", 'asc')->get();
       return view('document.paluutama', compact('documents', 'folders'));
    }
-   
+
    public function download($id)
    {
       $document = Document::findOrFail($id);
@@ -50,6 +50,8 @@ class PaluUtamaController extends Controller
    {
       $request->validate([
          'name' => ['required', 'string', 'max:255', 'unique:documents'],
+         'warning' => 'required',
+         'format' => 'required',
          'expired_at' => ['required', 'date'],
          'file' => 'required|mimes:pdf|max:51200', // 50MB         
       ]);
@@ -62,6 +64,8 @@ class PaluUtamaController extends Controller
          $document = new Document();
          $document->folder_id = 1;
          $document->name = $request->name;
+         $document->warning = $request->warning;
+         $document->format = $request->format;
          $document->filename = $filename;
          $document->expired_at = $request->expired_at;
          $document->created_by = Session::get('id');
@@ -83,6 +87,8 @@ class PaluUtamaController extends Controller
    {
       $request->validate([
          'name' => ['required', 'string', 'max:255', 'unique:documents,name,' . $id],
+         'warning' => 'required',
+         'format' => 'required',
          'expired_at' => ['required', 'date'],
          'file' => 'mimes:pdf|max:51200', // 50MB         
       ]);
@@ -96,23 +102,25 @@ class PaluUtamaController extends Controller
 
          $document->folder_id = 1;
          $document->name = $request->name;
+         $document->warning = $request->warning;
+         $document->format = $request->format;
          $document->expired_at = $request->expired_at;
          $document->updated_by = Session::get('id');
 
          if ($request->hasFile('file')) {
-               $newFilename = time() . '_' . $request->file('file')->getClientOriginalName();
-               $document->filename = $newFilename;
-               $document->save();
+            $newFilename = time() . '_' . $request->file('file')->getClientOriginalName();
+            $document->filename = $newFilename;
+            $document->save();
 
-               // Store the new file
-               Storage::putFileAs(DocumentController::DOCUMENT_FILE_PATH, $request->file('file'), $newFilename);
+            // Store the new file
+            Storage::putFileAs(DocumentController::DOCUMENT_FILE_PATH, $request->file('file'), $newFilename);
 
-               // Delete the old file
-               if (Storage::exists($oldFilepath)) {
-                  Storage::delete($oldFilepath);
-               }
+            // Delete the old file
+            if (Storage::exists($oldFilepath)) {
+               Storage::delete($oldFilepath);
+            }
          } else {
-               $document->save();
+            $document->save();
          }
       } catch (\Exception $e) {
          DB::rollBack();
@@ -124,7 +132,7 @@ class PaluUtamaController extends Controller
       return redirect()->route('paluutama.index')->with('success', 'Dokumen berhasil diubah');
    }
 
- 
+
    public function destroy($id)
    {
       DB::beginTransaction();
@@ -135,7 +143,7 @@ class PaluUtamaController extends Controller
          $document->delete();
 
          if (Storage::exists($filepath)) {
-               Storage::delete($filepath);
+            Storage::delete($filepath);
          }
       } catch (\Exception $e) {
          DB::rollBack();
